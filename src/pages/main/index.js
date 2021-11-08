@@ -50,6 +50,8 @@ export default class Main extends Component {
         newRealty: false,
         cameraModalOpened: false,
         dataModalOpened: false,
+        detailsModalOpened: false,
+        realtyDetailed: null,
         realtyData: {
             location: {
                 latitude: null,
@@ -202,6 +204,64 @@ export default class Main extends Component {
         }
     }
 
+    handleDetailsModalClose = index => this.setState({
+        detailsModalOpened: !this.state.detailsModalOpened,
+        realtyDetailed: index,
+    })
+
+    renderDetailsModal = () => (
+        <Modal
+            visible={this.state.detailsModalOpened}
+            transparent={false}
+            animationType="slide"
+            onRequestClose={() => this.handleDetailsModalClose(null)}
+        >
+            <ModalContainer>
+                <DetailsModalFirstDivision>
+                    <DetailsModalBackButton onPress={() => this.handleDetailsModalClose(null)}>
+                        Voltar
+                    </DetailsModalBackButton>
+                </DetailsModalFirstDivision>
+                <DetailsModalSecondDivision>
+                    <DetailsModalRealtyTitle>
+                        {this.state.detailsModalOpened
+                            ? this.state.locations[this.state.realtyDetailed].title
+                            : ''
+                        }
+                    </DetailsModalRealtyTitle>
+                    <DetailsModalRealtySubTitle>Casa mobiliada com 3 quartos + quintal</DetailsModalRealtySubTitle>
+                    <DetailsModalRealtyAddress>
+                        {this.state.detailsModalOpened
+                            ? this.state.locations[this.state.realtyDetailed].address
+                            : ''
+                        }
+                    </DetailsModalRealtyAddress>
+                    {this.renderDetailsImagesList()}
+                </DetailsModalSecondDivision>
+                <DetailsModalThirdDivision>
+                    <DetailsModalPrice>R$ {this.state.detailsModalOpened
+                        ? this.state.locations[this.state.realtyDetailed].price
+                        : 0
+                    }</DetailsModalPrice>
+                </DetailsModalThirdDivision>
+            </ModalContainer>
+        </Modal>
+    )
+
+    renderDetailsImagesList = () => (
+        this.state.detailsModalOpened && (
+            <ModalImagesList horizontal>
+                {this.state.locations[this.state.realtyDetailed].images.map(image => (
+                    <ModalImageItem
+                        key={image.id}
+                        source={{ uri: `http://10.0.2.2:3333/images/${image.path}` }}
+                        resizeMode="stretch"
+                    />
+                ))}
+            </ModalImagesList>
+        )
+    )
+
     renderImagesList = () => (
         this.state.realtyData.images.length !== 0 ? (
             <ModalImagesListContainer>
@@ -237,6 +297,7 @@ export default class Main extends Component {
                                 this.state.realtyData.location.longitude,
                                 this.state.realtyData.location.latitude
                             ]}
+                            key={location.id.toString()}
                         >
                             <MarkerContainer>
                                 <MarkerLabel />
@@ -320,13 +381,15 @@ export default class Main extends Component {
     )
 
     renderLocations = () => (
-        this.state.locations.map(location => (
+        this.state.locations.map((location, index) => (
             <MapboxGL.PointAnnotation
                 id={location.id.toString()}
                 coordinate={[parseFloat(location.longitude), parseFloat(location.latitude)]}
             >
                 <AnnotationContainer>
-                    <AnnotationText>{location.price}</AnnotationText>
+                    <AnnotationText onPress={() => this.handleDetailsModalClose(index)}>
+                        {location.price}
+                    </AnnotationText>
                 </AnnotationContainer>
                 <MapboxGL.Callout title={location.title} />
             </MapboxGL.PointAnnotation>
