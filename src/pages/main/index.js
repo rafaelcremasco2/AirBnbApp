@@ -23,6 +23,19 @@ import {
     ContinueButtonText,
     TakePictureButtonContainer,
     TakePictureButtonLabel,
+    DataButtonsWrapper,
+    MarkerContainer,
+    MarkerLabel,
+    Form,
+    Input,
+    DetailsModalFirstDivision,
+    DetailsModalSecondDivision,
+    DetailsModalThirdDivision,
+    DetailsModalBackButton,
+    DetailsModalPrice,
+    DetailsModalRealtyTitle,
+    DetailsModalRealtySubTitle,
+    DetailsModalRealtyAddress,
 } from './styles';
 
 MapboxGL.setAccessToken('<aqui_vai_seu_token>');
@@ -70,7 +83,7 @@ export default class Main extends Component {
         }
     }
 
-    async componentDidMount() {
+    getLocation = async () => {
         try {
             const response = await api.get('/properties', {
                 params: {
@@ -83,6 +96,10 @@ export default class Main extends Component {
         } catch (err) {
             console.tron.log(err);
         }
+    }
+
+    componentDidMount() {
+        this.getLocation();
     }
 
     handleTakePicture = async () => {
@@ -102,6 +119,89 @@ export default class Main extends Component {
         }
     }
 
+    handleCameraModalClose = () => this.setState({ cameraModalOpened: !this.state.cameraModalOpened })
+
+    handleDataModalClose = () => this.setState({
+        dataModalOpened: !this.state.dataModalOpened,
+        cameraModalOpened: false,
+    })
+
+    handleInputChange = (index, value) => {
+        const { realtyData } = this.state;
+        switch (index) {
+            case 'name':
+                this.setState({
+                    realtyData: {
+                        ...realtyData,
+                        name: value,
+                    }
+                });
+                break;
+            case 'address':
+                this.setState({
+                    realtyData: {
+                        ...realtyData,
+                        address: value,
+                    }
+                });
+                break;
+            case 'price':
+                this.setState({
+                    realtyData: {
+                        ...realtyData,
+                        price: value,
+                    }
+                });
+                break;
+        }
+    }
+
+    saveRealty = async () => {
+        try {
+            const {
+                realtyData: {
+                    name,
+                    address,
+                    price,
+                    location: {
+                        latitude,
+                        longitude
+                    },
+                    images
+                }
+            } = this.state;
+
+            const newRealtyResponse = await api.post('/properties', {
+                title: name,
+                address,
+                price,
+                latitude: Number(latitude.toFixed(6)),
+                longitude: Number(longitude.toFixed(6)),
+            });
+
+            const imagesData = new FormData();
+
+            images.forEach((image, index) => {
+                imagesData.append('image', {
+                    uri: image.uri,
+                    type: 'image/jpeg',
+                    name: `${newRealtyResponse.data.title}_${index}.jpg`
+                });
+            });
+
+            await api.post(
+                `/properties/${newRealtyResponse.data.id}/images`,
+                imagesData,
+            );
+
+            this.getLocation()
+            this.handleDataModalClose()
+            this.setState({ newRealty: false });
+        } catch (err) {
+            console.tron.log(err);
+        }
+    }
+
     renderImagesList = () => (
         this.state.realtyData.images.length !== 0 ? (
             <ModalImagesListContainer>
@@ -114,12 +214,71 @@ export default class Main extends Component {
         ) : null
     )
 
-    handleCameraModalClose = () => this.setState({ cameraModalOpened: !this.state.cameraModalOpened })
-
-    handleDataModalClose = () => this.setState({
-        dataModalOpened: !this.state.dataModalOpened,
-        cameraModalOpened: false,
-    })
+    renderDataModal = () => (
+        <Modal
+            visible={this.state.dataModalOpened}
+            transparent={false}
+            animationType="slide"
+            onRequestClose={this.handleDataModalClose}
+        >
+            <ModalContainer>
+                <ModalContainer>
+                    <MapboxGL.MapView
+                        centerCoordinate={[
+                            this.state.realtyData.location.longitude,
+                            this.state.realtyData.location.latitude
+                        ]}
+                        style={{ flex: 1 }}
+                        styleURL={MapboxGL.StyleURL.Dark}
+                    >
+                        <MapboxGL.PointAnnotation
+                            id="center"
+                            coordinate={[
+                                this.state.realtyData.location.longitude,
+                                this.state.realtyData.location.latitude
+                            ]}
+                        >
+                            <MarkerContainer>
+                                <MarkerLabel />
+                            </MarkerContainer>
+                        </MapboxGL.PointAnnotation>
+                    </MapboxGL.MapView>
+                </ModalContainer>
+                {this.renderImagesList()}
+                <Form>
+                    <Input
+                        placeholder="Nome do Imóvel"
+                        value={this.state.realtyData.name}
+                        onChangeText={name => this.handleInputChange('name', name)}
+                        autoCapitalize="none"
+                        autoCorrect={false}
+                    />
+                    <Input
+                        placeholder="Endereço"
+                        value={this.state.realtyData.address}
+                        onChangeText={address => this.handleInputChange('address', address)}
+                        autoCapitalize="none"
+                        autoCorrect={false}
+                    />
+                    <Input
+                        placeholder="Preço"
+                        value={this.state.realtyData.price}
+                        onChangeText={price => this.handleInputChange('price', price)}
+                        autoCapitalize="none"
+                        autoCorrect={false}
+                    />
+                </Form>
+                <DataButtonsWrapper>
+                    <SelectButtonContainer onPress={this.saveRealty}>
+                        <ButtonText>Salvar Imóvel</ButtonText>
+                    </SelectButtonContainer>
+                    <CancelButtonContainer onPress={this.handleDataModalClose}>
+                        <ButtonText>Cancelar</ButtonText>
+                    </CancelButtonContainer>
+                </DataButtonsWrapper>
+            </ModalContainer>
+        </Modal>
+    )
 
     renderCameraModal = () => (
         <Modal
