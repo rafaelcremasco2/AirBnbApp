@@ -195,6 +195,12 @@ dependencies {
 
     implementation "androidx.swiperefreshlayout:swiperefreshlayout:1.0.0"
 
+    implementation project(':mapbox-react-native-mapbox-gl') {
+        implementation ('com.squareup.okhttp3:okhttp:3.6.0') {
+        force = true
+    }
+}
+    
     debugImplementation("com.facebook.flipper:flipper:${FLIPPER_VERSION}") {
         exclude group:'com.facebook.fbjni'
     }
