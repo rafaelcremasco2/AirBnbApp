@@ -1,6 +1,7 @@
 import React from 'react';
 import PropTypes from 'prop-types';
-import { StatusBar } from 'react-native';
+import { StatusBar, Modal } from 'react-native'; // Adicionado o Modal
+import { RNCamera } from 'react-native-camera';
 import MapboxGL from '@mapbox/react-native-mapbox-gl';
 import {
     Container,
@@ -11,7 +12,17 @@ import {
     CancelButtonContainer,
     SelectButtonContainer,
     ButtonText,
-    Marker
+    Marker,
+    ModalContainer,
+    ModalImagesListContainer,
+    ModalImagesList,
+    ModalImageItem,
+    ModalButtons,
+    CameraButtonContainer,
+    CancelButtonText,
+    ContinueButtonText,
+    TakePictureButtonContainer,
+    TakePictureButtonLabel,
 } from './styles';
 
 MapboxGL.setAccessToken('<aqui_vai_seu_token>');
@@ -37,37 +48,6 @@ export default class Main extends Component {
             images: [],
         },
     };
-
-    renderLocations = () => (
-        this.state.locations.map(location => (
-            <MapboxGL.PointAnnotation
-                id={location.id.toString()}
-                coordinate={[parseFloat(location.longitude), parseFloat(location.latitude)]}
-            >
-                <AnnotationContainer>
-                    <AnnotationText>{location.price}</AnnotationText>
-                </AnnotationContainer>
-                <MapboxGL.Callout title={location.title} />
-            </MapboxGL.PointAnnotation>
-        ))
-    )
-
-    renderConditionalsButtons = () => (
-        !this.state.newRealty ? (
-            <NewButtonContainer onPress={this.handleNewRealtyPress}>
-                <ButtonText>Novo Imóvel</ButtonText>
-            </NewButtonContainer>
-        ) : (
-            <ButtonsWrapper>
-                <SelectButtonContainer onPress={this.handleGetPositionPress}>
-                    <ButtonText>Selecionar localização</ButtonText>
-                </SelectButtonContainer>
-                <CancelButtonContainer onPress={this.handleNewRealtyPress}>
-                    <ButtonText>Cancelar</ButtonText>
-                </CancelButtonContainer>
-            </ButtonsWrapper>
-        )
-    )
 
     handleNewRealtyPress = () =>
         this.setState({ newRealty: !this.state.newRealty })
@@ -104,6 +84,112 @@ export default class Main extends Component {
             console.tron.log(err);
         }
     }
+
+    handleTakePicture = async () => {
+        if (this.camera) {
+            const options = { quality: 0.5, base64: true, forceUpOrientation: true, fixOrientation: true, };
+            const data = await this.camera.takePictureAsync(options)
+            const { realtyData } = this.state;
+            this.setState({
+                realtyData: {
+                    ...realtyData,
+                    images: [
+                        ...realtyData.images,
+                        data,
+                    ]
+                }
+            })
+        }
+    }
+
+    renderImagesList = () => (
+        this.state.realtyData.images.length !== 0 ? (
+            <ModalImagesListContainer>
+                <ModalImagesList horizontal>
+                    {this.state.realtyData.images.map(image => (
+                        <ModalImageItem source={{ uri: image.uri }} resizeMode="stretch" />
+                    ))}
+                </ModalImagesList>
+            </ModalImagesListContainer>
+        ) : null
+    )
+
+    handleCameraModalClose = () => this.setState({ cameraModalOpened: !this.state.cameraModalOpened })
+
+    handleDataModalClose = () => this.setState({
+        dataModalOpened: !this.state.dataModalOpened,
+        cameraModalOpened: false,
+    })
+
+    renderCameraModal = () => (
+        <Modal
+            visible={this.state.cameraModalOpened}
+            transparent={false}
+            animationType="slide"
+            onRequestClose={this.handleCameraModalClose}
+        >
+            <ModalContainer>
+                <ModalContainer>
+                    <RNCamera
+                        ref={camera => {
+                            this.camera = camera;
+                        }}
+                        style={{ flex: 1 }}
+                        type={RNCamera.Constants.Type.back}
+                        autoFocus={RNCamera.Constants.AutoFocus.on}
+                        flashMode={RNCamera.Constants.FlashMode.off}
+                        permissionDialogTitle={"Permission to use camera"}
+                        permissionDialogMessage={
+                            "We need your permission to use your camera phone"
+                        }
+                    />
+                    <TakePictureButtonContainer onPress={this.handleTakePicture}>
+                        <TakePictureButtonLabel />
+                    </TakePictureButtonContainer>
+                </ModalContainer>
+                {this.renderImagesList()}
+                <ModalButtons>
+                    <CameraButtonContainer onPress={this.handleCameraModalClose}>
+                        <CancelButtonText>Cancelar</CancelButtonText>
+                    </CameraButtonContainer>
+                    <CameraButtonContainer onPress={this.handleDataModalClose}>
+                        <ContinueButtonText>Continuar</ContinueButtonText>
+                    </CameraButtonContainer>
+                </ModalButtons>
+            </ModalContainer>
+        </Modal>
+    )
+
+    renderLocations = () => (
+        this.state.locations.map(location => (
+            <MapboxGL.PointAnnotation
+                id={location.id.toString()}
+                coordinate={[parseFloat(location.longitude), parseFloat(location.latitude)]}
+            >
+                <AnnotationContainer>
+                    <AnnotationText>{location.price}</AnnotationText>
+                </AnnotationContainer>
+                <MapboxGL.Callout title={location.title} />
+            </MapboxGL.PointAnnotation>
+        ))
+    )
+
+    renderConditionalsButtons = () => (
+        !this.state.newRealty ? (
+            <NewButtonContainer onPress={this.handleNewRealtyPress}>
+                <ButtonText>Novo Imóvel</ButtonText>
+            </NewButtonContainer>
+        ) : (
+            <ButtonsWrapper>
+                <SelectButtonContainer onPress={this.handleGetPositionPress}>
+                    <ButtonText>Selecionar localização</ButtonText>
+                </SelectButtonContainer>
+                <CancelButtonContainer onPress={this.handleNewRealtyPress}>
+                    <ButtonText>Cancelar</ButtonText>
+                </CancelButtonContainer>
+            </ButtonsWrapper>
+        )
+    )
 
     renderMarker = () => (
         this.state.newRealty &&
